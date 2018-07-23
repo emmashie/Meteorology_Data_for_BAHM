@@ -96,29 +96,44 @@ stations = {
                         hourly=["047772.xlsx", "23230.xlsx", "93228.xlsx"])
 }
 
-#def load_data():
-#    return
+def load_data(dat, station):
+    ind = np.where(dat["STATION"]==key)[0]
+    dates = dat["DATE"][ind].values
+    precip = dat["PRCP"][ind].values
+    datet = [datetime.strptime(str(dates[i]), '%Y-%m-%d') for i in range(len(dates))]
+    dated = [datet[i].date() for i in range(len(datet))]
+    return datet, dated, precip 
 
 def find_missing_dates(dates):
     date_set = set(dates[0] + timedelta(x) for x in range((dates[-1] - dates[0]).days))
     missing = sorted(date_set - set(dates))
     return missing
 
+def fill_data(datetimes1, datetimes2, precip1, precip2, missing, ratio):
+    dated2 = [datetimes2[i].date() for i in range(len(datetimes2))]
+    dind = np.where(np.in1d(dated2, missing)==True)[0]
+    dates_all = np.zeros(len(datetimes1)+len(dind)).tolist()
+    precip_all = np.zeros(len(datetimes1)+len(dind))
+    j=0
+    for i in range(len(precip_all)):
+        if i < len(datetimes1):
+            dates_all[i]=datetimes1[i]
+            precip_all[i]=precip1[i]
+        if i >= len(dated):
+            dates_all[i]=datetimes2[dind[j]]
+            precip_all[i]=precip2[dind[j]]*ratio
+            j+=1
+    dates = sorted(dates_all)
+    precip = np.asarray([p for _,p in sorted(zip(dates_all, precip_all))])
+    return dates, precip
+
 dat = pd.read_csv(path+file)
 i=0
 for key in station_keys:
-    f0 = open(path+key+"_missing_dates.txt", "w")
-    ind = np.where(dat["STATION"]==key)[0]
-    dates = dat["DATE"][ind].values
-    precip = dat["PRCP"][ind].values
-    # date strings to datetimes
-    datet = [datetime.strptime(str(dates[i]), '%Y-%m-%d') for i in range(len(dates))]
-    dated = [datet[i].date() for i in range(len(datet))]
-    # find missing dates
-    date_set = set(dated[0] + timedelta(x) for x in range((dated[-1] - dated[0]).days))
-    missing = sorted(date_set - set(dated))
+    f0 = open(path+key+"_missing_dates0.txt", "w")
+    datet, dated, precip = load_data(dat, key)
+    missing = find_missing_dates(dated)
     if len(missing)>0:
-        mstation = stations[key]["daily_fill"][0] 
         # write missing dates to file
         f0.write("missing dates")
         f0.write('\n')
@@ -126,39 +141,15 @@ for key in station_keys:
             f0.write(str(m))
             f0.write('\n')
         f0.close()
+        mstation = stations[key]["daily_fill"][0] 
         ratio = stations[key]["adjust_factor"]
-        mind = np.where(dat["STATION"].values==mstation)[0]
-        mdates = dat["DATE"][mind].values
-        mprecip = dat["PRCP"][mind].values
-        # date strings to datetimes
-        mdatet = [datetime.strptime(str(mdates[i]), '%Y-%m-%d') for i in range(len(mdates))]
-        mdated = [mdatet[i].date() for i in range(len(mdatet))]
-        dind = np.where(np.in1d(mdated, missing)==True)[0]
-        datet_all = np.zeros(len(dated)+len(dind)).tolist()
-        precip_all = np.zeros(len(dated)+len(dind))
-        j=0
-        for i in range(len(precip_all)):
-            if i < len(dated):
-                datet_all[i]=datet[i]
-                precip_all[i]=precip[i]
-            if i >= len(dated):
-                datet_all[i]=mdatet[dind[j]]
-                precip_all[i]=mprecip[dind[j]]*ratio
-                j+=1
-        datet = datet_all
-        precip = precip_all
-    datet = sorted(datet_all)
-    precip = np.asarray([p for _,p in sorted(zip(datet_all, precip_all))])
+        mdatet, mdated, mprecip = load_data(dat, mstation)
+        datet, precip = fill_data(datet, mdatet, precip, mprecip, missing, ratio)
     f1 = open(path+key+".csv", "w")
     f1.write("Year, Month, Day, PRCP \n")
     for d in range(len(datet)):
         f1.write("%d, %d, %d, %f \n" % (datet[d].year, datet[d].month, datet[d].day, precip[d]))
     f1.close()
-    #daily_dat = np.zeros((len(dated),4))
-    #for d in range(len(dated)):
-    #    daily_dat[d,0] = datet[d].year
-    #    daily_dat[d,1] = datet[d].month
-    #    daily_dat[d,2] = datet[d].day
-    #    daily_dat[d,3] = precip[d]
     i+=1
 
+### add check if all data missing data has been filled
