@@ -97,7 +97,7 @@ stations = {
 }
 
 def load_data(dat, station):
-    ind = np.where(dat["STATION"]==key)[0]
+    ind = np.where(dat["STATION"]==station)[0]
     dates = dat["DATE"][ind].values
     precip = dat["PRCP"][ind].values
     datet = [datetime.strptime(str(dates[i]), '%Y-%m-%d') for i in range(len(dates))]
@@ -119,7 +119,7 @@ def fill_data(datetimes1, datetimes2, precip1, precip2, missing, ratio):
         if i < len(datetimes1):
             dates_all[i]=datetimes1[i]
             precip_all[i]=precip1[i]
-        if i >= len(dated):
+        if i >= len(datetimes1):
             dates_all[i]=datetimes2[dind[j]]
             precip_all[i]=precip2[dind[j]]*ratio
             j+=1
@@ -130,11 +130,11 @@ def fill_data(datetimes1, datetimes2, precip1, precip2, missing, ratio):
 dat = pd.read_csv(path+file)
 i=0
 for key in station_keys:
-    f0 = open(path+key+"_missing_dates0.txt", "w")
     datet, dated, precip = load_data(dat, key)
     missing = find_missing_dates(dated)
     if len(missing)>0:
         # write missing dates to file
+        f0 = open(path+key+"_missing_dates0.txt", "w")
         f0.write("missing dates")
         f0.write('\n')
         for m in missing:
@@ -146,10 +146,24 @@ for key in station_keys:
         mdatet, mdated, mprecip = load_data(dat, mstation)
         datet, precip = fill_data(datet, mdatet, precip, mprecip, missing, ratio)
     f1 = open(path+key+".csv", "w")
-    f1.write("Year, Month, Day, PRCP \n")
+    f1.write("Year,Month,Day,PRCP \n")
     for d in range(len(datet)):
         f1.write("%d, %d, %d, %f \n" % (datet[d].year, datet[d].month, datet[d].day, precip[d]))
     f1.close()
     i+=1
 
 ### add check if all data missing data has been filled
+for key in station_keys:
+    dat = pd.read_csv(path+key+".csv")
+    dates = [datetime(dat["Year"][i], dat["Month"][i], dat["Day"][i]).date() for i in range(len(dat["Year"]))]
+    missing = find_missing_dates(dates)
+    if len(missing)>0:
+        f0 = open(path+key+"_missing_dates1.txt", "w")
+        f0.write("missing dates")
+        f0.write('\n')
+        for m in missing:
+            f0.write(str(m))
+            f0.write('\n')
+        f0.close()
+
+
