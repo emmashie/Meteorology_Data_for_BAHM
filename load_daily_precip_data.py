@@ -37,6 +37,8 @@ stations = {
     "USC00045123": dict(name="Los Gatos",
                         daily_fill=["US1CASC0018"],
                         daily_fill_name="San Jose 3.0 WSW",
+                        daily_fill2=["US1CASC0011"],
+                        daily_fill_name2="Cambrian Park 2.2",
                         adjust_factor=1.43,
                         hourly=["047821.xlsx"]),
     "USC00045378": dict(name="Martinez",
@@ -47,6 +49,8 @@ stations = {
     "USC00045933": dict(name="Mount Hamilton",
                         daily_fill=["US1CASC0007"],
                         daily_fill_name="San Jose 4.6 NE",
+                        daily_fill2=["US1CASC0012"],
+                        daily_fill_name2="San Jose 3.5 ENE",
                         adjust_factor=1.51,
                         hourly=["047821.xlsx"]),
     "USC00046074": dict(name="Napa",
@@ -97,6 +101,8 @@ stations = {
 }
 
 def load_data(dat, station):
+    """ load precipitation data from full file of all stations
+    """
     ind = np.where(dat["STATION"]==station)[0]
     dates = dat["DATE"][ind].values
     precip = dat["PRCP"][ind].values
@@ -105,11 +111,17 @@ def load_data(dat, station):
     return datet, dated, precip 
 
 def find_missing_dates(dates):
+    """ find missing dates 
+    """
     date_set = set(dates[0] + timedelta(x) for x in range((dates[-1] - dates[0]).days))
     missing = sorted(date_set - set(dates))
     return missing
 
 def fill_data(datetimes1, datetimes2, precip1, precip2, missing, ratio):
+    """ takes datetimes and precipitation 
+        data from two different stations
+        and fills in the daily data 
+    """
     dated2 = [datetimes2[i].date() for i in range(len(datetimes2))]
     dind = np.where(np.in1d(dated2, missing)==True)[0]
     dates_all = np.zeros(len(datetimes1)+len(dind)).tolist()
@@ -127,31 +139,46 @@ def fill_data(datetimes1, datetimes2, precip1, precip2, missing, ratio):
     precip = np.asarray([p for _,p in sorted(zip(dates_all, precip_all))])
     return dates, precip
 
-dat = pd.read_csv(path+file)
-i=0
-for key in station_keys:
-    datet, dated, precip = load_data(dat, key)
-    missing = find_missing_dates(dated)
-    if len(missing)>0:
-        # write missing dates to file
-        f0 = open(path+key+"_missing_dates0.txt", "w")
-        f0.write("missing dates")
+def write_missing(missing, filename):
+    """ write missing dates to a txt file
+    """
+    f0 = open(filename, "w")
+    f0.write("missing dates")
+    f0.write('\n')
+    for m in missing:
+        f0.write(str(m))
         f0.write('\n')
-        for m in missing:
-            f0.write(str(m))
-            f0.write('\n')
-        f0.close()
-        mstation = stations[key]["daily_fill"][0] 
-        ratio = stations[key]["adjust_factor"]
-        mdatet, mdated, mprecip = load_data(dat, mstation)
-        datet, precip = fill_data(datet, mdatet, precip, mprecip, missing, ratio)
-    f1 = open(path+key+".csv", "w")
-    f1.write("Year,Month,Day,PRCP \n")
-    for d in range(len(datet)):
-        f1.write("%d, %d, %d, %f \n" % (datet[d].year, datet[d].month, datet[d].day, precip[d]))
-    f1.close()
-    i+=1
+    f0.close()
 
+def write_processed(filename, date, precip):
+    """ write out data into processed format
+    """
+    f1 = open(filename, "w")
+    f1.write("Year,Month,Day,PRCP \n")
+    for d in range(len(date)):
+        f1.write("%d,%d,%d,%f\n" % (date[d].year, date[d].month, date[d].day, precip[d]))
+    f1.close()
+
+def process_precip_data(filepath, station_keys, station_dict):
+    """ completes full processing of data 
+         -- fills in daily data and writes out to csv
+    """
+    dat = pd.read_csv(filepath)
+    for key in station_keys:
+        datet, dated, precip = load_data(dat, key) 
+        missing = find_missing_dates(dated)
+        if len(missing)>0:
+            write_missing(missing, path+key+"_missing_dates0.txt")
+            mstation = station_dict[key]["daily_fill"][0] 
+            ratio = station_dict[key]["adjust_factor"]
+            mdatet, mdated, mprecip = load_data(dat, mstation)
+            datet, precip = fill_data(datet, mdatet, precip, mprecip, missing, ratio)
+        write_processed(path+key+".csv", datet, precip)
+
+process_precip_data(path+file, station_keys, stations)
+
+
+data = pd.read_csv(path+file)
 ### add check if all data missing data has been filled
 for key in station_keys:
     dat = pd.read_csv(path+key+".csv")
@@ -165,5 +192,10 @@ for key in station_keys:
             f0.write(str(m))
             f0.write('\n')
         f0.close()
+        mstation = stations[key]["daily_fill2"][0] 
+        ratio = stations[key]["adjust_factor"]
+        mdatet, mdated, mprecip = load_data(data, mstation)
+        datet, precip = fill_data(datet, mdatet, precip, mprecip, missing, ratio)
+
 
 
