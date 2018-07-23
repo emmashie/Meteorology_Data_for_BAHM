@@ -96,11 +96,18 @@ stations = {
                         hourly=["047772.xlsx", "23230.xlsx", "93228.xlsx"])
 }
 
+#def load_data():
+#    return
+
+def find_missing_dates(dates):
+    date_set = set(dates[0] + timedelta(x) for x in range((dates[-1] - dates[0]).days))
+    missing = sorted(date_set - set(dates))
+    return missing
+
 dat = pd.read_csv(path+file)
 i=0
 for key in station_keys:
     f0 = open(path+key+"_missing_dates.txt", "w")
-    #f1 = open(path+key+".csv")
     ind = np.where(dat["STATION"]==key)[0]
     dates = dat["DATE"][ind].values
     precip = dat["PRCP"][ind].values
@@ -111,7 +118,14 @@ for key in station_keys:
     date_set = set(dated[0] + timedelta(x) for x in range((dated[-1] - dated[0]).days))
     missing = sorted(date_set - set(dated))
     if len(missing)>0:
-        mstation = stations[key]["daily_fill"][0]
+        mstation = stations[key]["daily_fill"][0] 
+        # write missing dates to file
+        f0.write("missing dates")
+        f0.write('\n')
+        for m in missing:
+            f0.write(str(m))
+            f0.write('\n')
+        f0.close()
         ratio = stations[key]["adjust_factor"]
         mind = np.where(dat["STATION"].values==mstation)[0]
         mdates = dat["DATE"][mind].values
@@ -120,27 +134,31 @@ for key in station_keys:
         mdatet = [datetime.strptime(str(mdates[i]), '%Y-%m-%d') for i in range(len(mdates))]
         mdated = [mdatet[i].date() for i in range(len(mdatet))]
         dind = np.where(np.in1d(mdated, missing)==True)[0]
-        dates_all = np.zeros(len(dated)+len(dind)).tolist()
+        datet_all = np.zeros(len(dated)+len(dind)).tolist()
         precip_all = np.zeros(len(dated)+len(dind))
         j=0
         for i in range(len(precip_all)):
             if i < len(dated):
-                dates_all[i]=dated[i]
+                datet_all[i]=datet[i]
                 precip_all[i]=precip[i]
-            if i > len(dated):
-                dates_all[i]=mdated[dind[j]]
+            if i >= len(dated):
+                datet_all[i]=mdatet[dind[j]]
                 precip_all[i]=mprecip[dind[j]]*ratio
                 j+=1
-        # sort dates and precip and then write to a file (f1)
-
-
-        f0.write("missing dates")
-        f0.write('\n')
-        for m in missing:
-            f0.write(str(m))
-            f0.write('\n')
-        f0.close()
-
-
+        datet = datet_all
+        precip = precip_all
+    datet = sorted(datet_all)
+    precip = np.asarray([p for _,p in sorted(zip(datet_all, precip_all))])
+    f1 = open(path+key+".csv", "w")
+    f1.write("Year, Month, Day, PRCP \n")
+    for d in range(len(datet)):
+        f1.write("%d, %d, %d, %f \n" % (datet[d].year, datet[d].month, datet[d].day, precip[d]))
+    f1.close()
+    #daily_dat = np.zeros((len(dated),4))
+    #for d in range(len(dated)):
+    #    daily_dat[d,0] = datet[d].year
+    #    daily_dat[d,1] = datet[d].month
+    #    daily_dat[d,2] = datet[d].day
+    #    daily_dat[d,3] = precip[d]
     i+=1
 
