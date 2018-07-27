@@ -30,6 +30,23 @@ def clean_up_hrmn(hrmn):
             hrmn[i] = '0' + hrmn[i]
     return hrmn 
 
+def check_doubles(valid_dates, valid_precip, dstart = datetime(2016,8,1), dend = datetime(2017,10,1)):
+    delta = dend - dstart 
+    valid_dates = np.asarray(valid_dates)
+    valid_days = np.asarray([d.date() for d in valid_dates])
+    for i in range(delta.days):
+        day = dstart + timedelta(days=i)
+        ind = np.where(valid_days==day.date())[0]
+        valid_day = valid_dates[ind]
+        hours = np.asarray([d.hour for d in valid_day])
+        double = np.where((hours[1:]-hours[:-1])==0)
+        if len(double)>0:
+            valid_dates = np.delete(valid_dates, ind[double])
+            valid_precip = np.delete(valid_precip, ind[double])
+            valid_days = np.delete(valid_days, ind[double])
+    return valid_dates, valid_precip
+
+
 
 def process_data(path, file, dstart = datetime(2016,8,1), dend = datetime(2017,10,1)):
     dat = pd.read_csv(path+file)
@@ -43,6 +60,7 @@ def process_data(path, file, dstart = datetime(2016,8,1), dend = datetime(2017,1
     dates = [datetime.strptime(d,"%Y%m%d%H%M") for d in datehrmn]
     valid_dates = [date for date in dates if date >= dstart and date <= dend]
     valid_precip = [precip[i] for i in range(len(precip)) if dates[i] >= dstart and dates[i] <= dend]
+    valid_dates, valid_precip = check_doubles(valid_dates, valid_precip, dstart, dend)
     write_processed(path+"processed/"+file, valid_dates, valid_precip)
     return 
 
