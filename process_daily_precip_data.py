@@ -22,8 +22,8 @@ stations = {
                         daily_fill_name="",
                         adjust_factor=1),
     "USC00044997": dict(name="Livermore",
-                        daily_fill=[],
-                        daily_fill_name="",
+                        daily_fill=["USW00023285"],
+                        daily_fill_name="Livermore Municipal Airport",
                         adjust_factor=1),
     "USC00045933": dict(name="Mount Hamilton",
                         daily_fill=["US1CASC0007"],
@@ -47,7 +47,7 @@ stations = {
                         adjust_factor=1.01),
     "USC00046144": dict(name="Newark",
                         daily_fill=["USC00043244"],
-                        daily_fill_name="Freemont",
+                        daily_fill_name="Fremont",
                         adjust_factor=0.98),
     "USC00046646": dict(name="Palo Alto",
                         daily_fill=["USC00047339"],
@@ -88,8 +88,8 @@ stations = {
                         daily_fill_name="Petaluma Airport",
                         adjust_factor=1.17),
     "USC00049185": dict(name="San Leandro",
-                        daily_fill=[],
-                        daily_fill_name="",
+                        daily_fill=["US1CAAL0030"],
+                        daily_fill_name="Oakland 1.2 ENE",
                         adjust_factor=1),
     "US1CASM0022": dict(name="Woodside",
                         daily_fill=["USC00047339"],
@@ -109,7 +109,7 @@ def load_data(dat, station):
     dated = [datet[i].date() for i in range(len(datet))]
     return datet, dated, precip 
 
-def find_missing_dates(dates, dstart=date(2016,8,1), dend=date(2017,10,1)):
+def find_missing_dates(dates, dstart=date(2017,1,1), dend=date(2018,1,1)):
     """ find missing dates 
     """
     date_set = set(dstart + timedelta(x) for x in range((dend - dstart).days+1))
@@ -220,4 +220,3 @@ for key in station_keys:
     missing = find_missing_dates(dates)
     if len(missing)>0:
         write_missing(missing, path+stations[key]["name"]+" Missing2.txt")
-

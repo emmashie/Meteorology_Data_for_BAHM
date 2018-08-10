@@ -5,18 +5,21 @@ import pandas as pd
 from datetime import date, timedelta, datetime
 
 path = "/mnt/c/Google_Drive/1_Nutrient_Share/1_Projects_NUTRIENTS/Modeling/SF_Bay_DFM/Meteorology_Data_for_BAHM/Precipitation/hourly/"
-files = ["WBAN00320.csv", "WBAN23244.csv", "WBAN23293.csv", "WBAN23213.csv", "WBAN23254.csv",
-         "WBAN93227.csv", "WBAN23230.csv", "WBAN23272.csv", "WBAN93228.csv", "WBAN23234.csv",
-         "WBAN23285.csv", "WBAN99999.csv"]
+files = ["WBAN00228.csv", "WBAN00320.csv", "WBAN23202.csv", "WBAN23230.csv",
+         "WBAN23234.csv", "WBAN23237.csv", "WBAN23244.csv", "WBAN23254.csv", 
+         "WBAN23272.csv", "WBAN93227.csv", "WBAN93228.csv", "WBAN93231.csv",
+         "WBAN93241.csv"]
 
 def write_processed(filename, date, precip):
     """ write out data into processed format
+        and convert mm precip to inches 
     """
     f1 = open(filename, "w")
     f1.write("Year,Month,Day,Hour,HOURLYPrecip\n")
     for d in range(len(date)):
-        f1.write("%d,%d,%d,%d,%f\n" % (date[d].year, date[d].month, date[d].day, date[d].hour, precip[d]))
+        f1.write("%d,%d,%d,%d,%f\n" % (date[d].year, date[d].month, date[d].day, date[d].hour, precip[d]/25.4))
     f1.close()
+
 
 def clean_up_hrmn(hrmn):
     hrmn = [str(h) for h in hrmn]
@@ -30,7 +33,8 @@ def clean_up_hrmn(hrmn):
             hrmn[i] = '0' + hrmn[i]
     return hrmn 
 
-def check_doubles(valid_dates, valid_precip, dstart = datetime(2016,8,1), dend = datetime(2017,10,1)):
+
+def check_doubles(valid_dates, valid_precip, dstart = datetime(2017,1,1), dend = datetime(2018,1,1)):
     delta = dend - dstart 
     valid_dates = np.asarray(valid_dates)
     valid_days = np.asarray([d.date() for d in valid_dates])
@@ -47,8 +51,7 @@ def check_doubles(valid_dates, valid_precip, dstart = datetime(2016,8,1), dend =
     return valid_dates, valid_precip
 
 
-
-def process_data(path, file, dstart = datetime(2016,8,1), dend = datetime(2017,10,1)):
+def process_data(path, file, dstart = datetime(2017,1,1), dend = datetime(2018,1,1)):
     dat = pd.read_csv(path+file)
     date = dat["Date"].values
     date = [int(d) for d in date]
@@ -63,6 +66,7 @@ def process_data(path, file, dstart = datetime(2016,8,1), dend = datetime(2017,1
     valid_dates, valid_precip = check_doubles(valid_dates, valid_precip, dstart, dend)
     write_processed(path+"processed/"+file, valid_dates, valid_precip)
     return 
+
 
 for file in files:
     process_data(path, file)
