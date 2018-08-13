@@ -30,12 +30,16 @@ stations = {
                         daily_fill_name="San Jose 4.6 NE",
                         daily_fill2=["US1CASC0012"],
                         daily_fill_name2="San Jose 3.5 ENE",
+                        daily_fill3=["USR0000CPOV"],
+                        daily_fill_name3="Poverty California",
                         adjust_factor=1.51),
     "USC00045123": dict(name="Los Gatos",
                         daily_fill=["US1CASC0018"],
                         daily_fill_name="San Jose 3.0 WSW",
                         daily_fill2=["US1CASC0011"],
                         daily_fill_name2="Cambrian Park 2.2",
+                        daily_fill3=["US1CASC0015"],
+                        daily_fill_name3="Saratoga 0.5 N",
                         adjust_factor=1.43),
     "USC00045378": dict(name="Martinez Water Plant",
                         daily_fill=["US1CACC0001"],
@@ -202,6 +206,21 @@ def process_precip_file(file, fill_file, key, station_dict):
         mdatet, mdated, mprecip = load_data(data, mstation)
         datet, precip = fill_data(datet, mdatet, precip, mprecip, missing, ratio)
     write_processed(file, datet, precip)
+
+def final_process(file, fill_file, key, station_dict):
+    data = pd.read_csv(fill_file)
+    dat = pd.read_csv(file)
+    dates = [datetime(dat["Year"][i], dat["Month"][i], dat["Day"][i]).date() for i in range(len(dat["Year"]))]
+    datet = [datetime.combine(dates[i], datetime.min.time()) for i in range(len(dates))]
+    precip = dat["PRCP"].values
+    missing = find_missing_dates(dates)
+    if len(missing)>0:
+        write_missing(missing, path+station_dict[key]["name"]+" Missing2.txt")
+        mstation = station_dict[key]["daily_fill3"][0] 
+        ratio = station_dict[key]["adjust_factor"]
+        mdatet, mdated, mprecip = load_data(data, mstation)
+        datet, precip = fill_data(datet, mdatet, precip, mprecip, missing, ratio)
+    write_processed(file, datet, precip)
  
 #process_precip_file(path+"processed/"+"USC00045123.csv", path+file, "USC00045123", stations)
 #process_precip_file(path+"processed/"+"USC00045933.csv", path+file, "USC00045933", stations)
@@ -209,6 +228,9 @@ def process_precip_file(file, fill_file, key, station_dict):
 process_precip_file(path+"processed/"+"Los Gatos.csv", path+file, "USC00045123", stations)
 process_precip_file(path+"processed/"+"Mount Hamilton.csv", path+file, "USC00045933", stations)
 process_precip_file(path+"processed/"+"San Jose.csv", path+file, "US1CASC0018", stations)
+
+final_process(path+"processed/"+"Los Gatos.csv", path+file, "USC00045123", stations)
+final_process(path+"processed/"+"Mount Hamilton.csv", path+file, "USC00045933", stations)
 
 ### add check if all data missing data has been filled
 for key in station_keys:
@@ -219,4 +241,4 @@ for key in station_keys:
     precip = dat["PRCP"].values
     missing = find_missing_dates(dates)
     if len(missing)>0:
-        write_missing(missing, path+stations[key]["name"]+" Missing2.txt")
+        write_missing(missing, path+stations[key]["name"]+" Missing3.txt")
