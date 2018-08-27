@@ -4,7 +4,8 @@ plt.ion()
 import pandas as pd 
 from datetime import date, timedelta, datetime
 
-path = "/mnt/c/Google_Drive/1_Nutrient_Share/1_Projects_NUTRIENTS/Modeling/SF_Bay_DFM/Meteorology_Data_for_BAHM/Precipitation/hourly/"
+path = "/Users/emmashienuss/Google_Drive/1_Nutrient_Share/1_Projects_NUTRIENTS/Modeling/SF_Bay_DFM/Meteorology_Data_for_BAHM/Precipitation/hourly/"
+#path = "/mnt/c/Google_Drive/1_Nutrient_Share/1_Projects_NUTRIENTS/Modeling/SF_Bay_DFM/Meteorology_Data_for_BAHM/Precipitation/hourly/"
 files = ["WBAN00228.csv", "WBAN00320.csv", "WBAN23202.csv", "WBAN23230.csv",
          "WBAN23234.csv", "WBAN23237.csv", "WBAN23244.csv", "WBAN23254.csv", 
          "WBAN23272.csv", "WBAN93227.csv", "WBAN93228.csv", "WBAN93231.csv",
@@ -50,6 +51,12 @@ def check_doubles(valid_dates, valid_precip, dstart = datetime(2017,1,1), dend =
             valid_days = np.delete(valid_days, ind[double])
     return valid_dates, valid_precip
 
+def find_missing_dates(dates, dstart=datetime(2017,1,1), dend=datetime(2018,1,1)):
+    """ find missing dates 
+    """
+    date_set = set(dstart + timedelta(hours=x) for x in range((dend-dstart).days*24+1))
+    missing = sorted(date_set - set(dates))
+    return missing
 
 def process_data(path, file, dstart = datetime(2017,1,1), dend = datetime(2018,1,1)):
     dat = pd.read_csv(path+file)
@@ -64,7 +71,14 @@ def process_data(path, file, dstart = datetime(2017,1,1), dend = datetime(2018,1
     valid_dates = [date for date in dates if date >= dstart and date <= dend]
     valid_precip = [precip[i] for i in range(len(precip)) if dates[i] >= dstart and dates[i] <= dend]
     valid_dates, valid_precip = check_doubles(valid_dates, valid_precip, dstart, dend)
-    write_processed(path+"processed/"+file, valid_dates, valid_precip)
+    h_dates = np.asarray([datetime(vd.year, vd.month, vd.day, vd.hour) for vd in valid_dates])
+    m_dates = np.asarray(find_missing_dates(h_dates))
+    m_precip = np.zeros(len(m_dates))
+    dates_all = np.concatenate((h_dates, m_dates))
+    precip_all = np.concatenate((valid_precip, m_precip))
+    Adates = sorted(dates_all)
+    Aprecip = np.asarray([p for _,p in sorted(zip(dates_all, precip_all))])
+    write_processed(path+"processed/"+file, Adates, Aprecip)
     return 
 
 
